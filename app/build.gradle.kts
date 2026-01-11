@@ -89,6 +89,9 @@ dependencies {
 
     // Coil (Încărcare Imagini) - Bonus UI
     implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Google Places API pentru căutare locații
+    implementation("com.google.android.libraries.places:places:3.3.0")
 
     // Material3 (UI Framework) - 5p Implementare UI
     implementation("androidx.compose.material3:material3")

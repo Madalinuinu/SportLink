@@ -105,10 +105,18 @@ fun LobbyItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
+                // Display relative time (e.g., "acum 5 minute")
                 Text(
-                    text = lobby.date,
+                    text = com.example.sportlink.util.getRelativeTimeString(lobby.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Display formatted date/time for the event
+                Text(
+                    text = com.example.sportlink.util.formatDateTime(lobby.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 
                 Row(

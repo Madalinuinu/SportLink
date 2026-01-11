@@ -11,12 +11,27 @@ data class Lobby(
     val id: String,
     val sportName: String,
     val location: String,
-    val date: String,
+    val locationLat: Double? = null,
+    val locationLng: Double? = null,
+    val date: String, // ISO 8601 format
     val maxPlayers: Int,
     val joinedPlayers: Int,
     val imageUrl: String? = null,
     val description: String? = null,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val creatorNickname: String? = null,
+    val creatorEmail: String? = null,
+    val participants: List<LobbyParticipant> = emptyList()
+)
+
+/**
+ * Domain model for a Lobby Participant.
+ */
+data class LobbyParticipant(
+    val userId: String,
+    val nickname: String,
+    val email: String,
+    val joinedAt: String
 )
 
 /**

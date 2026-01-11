@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.sportlink.domain.model.Lobby
 import com.example.sportlink.domain.repository.LobbyRepository
 import com.example.sportlink.domain.util.Result
+import com.example.sportlink.data.preferences.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,8 +29,9 @@ sealed class DetailsUiState {
      * 
      * @param lobby The lobby details
      * @param isJoined Whether the current user has joined this lobby
+     * @param isCreator Whether the current user is the creator of this lobby
      */
-    data class Success(val lobby: Lobby, val isJoined: Boolean) : DetailsUiState()
+    data class Success(val lobby: Lobby, val isJoined: Boolean, val isCreator: Boolean = false) : DetailsUiState()
     
     /**
      * Represents error state with user-friendly message.
@@ -47,7 +49,8 @@ sealed class DetailsUiState {
  */
 @HiltViewModel
 class DetailsViewModel @Inject constructor(
-    private val lobbyRepository: LobbyRepository
+    private val lobbyRepository: LobbyRepository,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow<DetailsUiState>(DetailsUiState.Loading)
@@ -84,7 +87,12 @@ class DetailsViewModel @Inject constructor(
             when (val result = lobbyRepository.getLobbyById(id)) {
                 is Result.Success -> {
                     currentLobby = result.data
-                    _uiState.value = DetailsUiState.Success(result.data, isJoined)
+                    // Check if current user is creator by comparing emails
+                    val currentUserEmail = preferencesManager.email.first()
+                    val isCreator = currentUserEmail != null && 
+                                   result.data.creatorEmail != null &&
+                                   currentUserEmail == result.data.creatorEmail
+                    _uiState.value = DetailsUiState.Success(result.data, isJoined, isCreator)
                 }
                 is Result.Error -> {
                     _uiState.value = DetailsUiState.Error(
@@ -112,79 +120,124 @@ class DetailsViewModel @Inject constructor(
     }
     
     /**
-     * Joins a lobby (saves to Room database).
+     * Joins a lobby via API and saves to Room database.
      * 
-     * Saves the lobby to local Room database for offline access.
-     * Updates UI state to reflect joined status.
+     * First calls API to join the lobby, then saves to local Room database for offline access.
+     * Updates UI state to reflect joined status and reloads lobby details to get updated participants.
      * 
      * Handles edge cases:
-     * - Duplicate join attempts (handled by Room REPLACE strategy)
+     * - Duplicate join attempts (handled by API)
+     * - Network errors
      * - Database write failures
      * 
      * @param lobby The lobby to join
      */
     fun joinLobby(lobby: Lobby) {
-        // Edge case: Validate lobby before saving
+        // Edge case: Validate lobby before joining
         if (lobby.id.isBlank()) {
             _uiState.value = DetailsUiState.Error("Lobby-ul nu este valid.")
             return
         }
         
         viewModelScope.launch {
-            when (val result = lobbyRepository.joinLobby(lobby)) {
-                is Result.Success -> {
-                    currentLobby = lobby
-                    _uiState.value = DetailsUiState.Success(lobby, isJoined = true)
+            // First join via API
+            val repositoryImpl = lobbyRepository as? com.example.sportlink.data.repository.LobbyRepositoryImpl
+            if (repositoryImpl != null) {
+                when (val apiResult = repositoryImpl.joinLobbyApi(lobby.id)) {
+                    is Result.Success -> {
+                        // After successful API join, save to Room
+                        when (val roomResult = lobbyRepository.joinLobby(lobby)) {
+                            is Result.Success -> {
+                                // Reload lobby details to get updated participants list
+                                loadLobbyDetails(lobby.id)
+                            }
+                            is Result.Error -> {
+                                // API join succeeded but Room save failed - still show as joined
+                                loadLobbyDetails(lobby.id)
+                            }
+                            else -> {}
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.value = DetailsUiState.Error(
+                            apiResult.exception.message ?: "Nu s-a putut alătura la lobby. Te rugăm să încerci din nou."
+                        )
+                    }
+                    else -> {}
                 }
-                is Result.Error -> {
-                    _uiState.value = DetailsUiState.Error(
-                        result.exception.message ?: "Nu s-a putut alătura la lobby. Te rugăm să încerci din nou."
-                    )
-                }
-                is Result.Loading -> {
-                    _uiState.value = DetailsUiState.Loading
+            } else {
+                // Fallback to old method if cast fails
+                when (val result = lobbyRepository.joinLobby(lobby)) {
+                    is Result.Success -> {
+                        currentLobby = lobby
+                        _uiState.value = DetailsUiState.Success(lobby, isJoined = true)
+                    }
+                    is Result.Error -> {
+                        _uiState.value = DetailsUiState.Error(
+                            result.exception.message ?: "Nu s-a putut alătura la lobby. Te rugăm să încerci din nou."
+                        )
+                    }
+                    else -> {}
                 }
             }
         }
     }
     
     /**
-     * Leaves a lobby (removes from Room database).
+     * Leaves a lobby via API.
      * 
-     * Removes the lobby from local Room database.
-     * Updates UI state to reflect left status.
+     * If user is creator, deletes the entire lobby.
+     * If user is participant, only removes from participants.
      * 
      * Handles edge cases:
-     * - Lobby not found in database (handled gracefully)
-     * - Database delete failures
+     * - Lobby not found
+     * - Network errors
+     * - User not a participant
      * 
      * @param lobbyId The ID of the lobby to leave
      */
     fun leaveLobby(lobbyId: String) {
-        // Edge case: Validate ID before deletion
+        // Edge case: Validate ID before leaving
         if (lobbyId.isBlank()) {
             _uiState.value = DetailsUiState.Error("ID-ul lobby-ului este invalid.")
             return
         }
         
         viewModelScope.launch {
-            when (val result = lobbyRepository.leaveLobby(lobbyId)) {
-                is Result.Success -> {
-                    // Update UI to reflect left status
-                    currentLobby?.let { lobby ->
-                        _uiState.value = DetailsUiState.Success(lobby, isJoined = false)
+            val repositoryImpl = lobbyRepository as? com.example.sportlink.data.repository.LobbyRepositoryImpl
+            if (repositoryImpl != null) {
+                when (val apiResult = repositoryImpl.leaveLobbyApi(lobbyId)) {
+                    is Result.Success -> {
+                        // If creator left, lobby was deleted - API handles it
+                        // If participant left, just update UI
+                        // Reload lobby details to get updated state
+                        loadLobbyDetails(lobbyId)
                     }
+                    is Result.Error -> {
+                        _uiState.value = DetailsUiState.Error(
+                            apiResult.exception.message ?: "Nu s-a putut părăsi lobby-ul. Te rugăm să încerci din nou."
+                        )
+                    }
+                    else -> {}
                 }
-                is Result.Error -> {
-                    _uiState.value = DetailsUiState.Error(
-                        result.exception.message ?: "Nu s-a putut părăsi lobby-ul. Te rugăm să încerci din nou."
-                    )
-                }
-                is Result.Loading -> {
-                    _uiState.value = DetailsUiState.Loading
+            } else {
+                // Fallback to old method if cast fails
+                when (val result = lobbyRepository.leaveLobby(lobbyId)) {
+                    is Result.Success -> {
+                        currentLobby?.let { lobby ->
+                            _uiState.value = DetailsUiState.Success(lobby, isJoined = false)
+                        }
+                    }
+                    is Result.Error -> {
+                        _uiState.value = DetailsUiState.Error(
+                            result.exception.message ?: "Nu s-a putut părăsi lobby-ul. Te rugăm să încerci din nou."
+                        )
+                    }
+                    else -> {}
                 }
             }
         }
     }
+    
 }
 

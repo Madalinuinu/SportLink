@@ -4,14 +4,17 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import com.example.sportlink.data.api.SportApi
+import com.example.sportlink.data.dto.MessageResponse
 import com.example.sportlink.data.dto.toDomainModel
 import com.example.sportlink.data.local.dao.LobbyDao
 import com.example.sportlink.data.local.entity.toDomainModel
+import com.example.sportlink.data.preferences.PreferencesManager
 import com.example.sportlink.domain.model.Lobby
 import com.example.sportlink.domain.model.toEntity
 import com.example.sportlink.domain.repository.LobbyRepository
 import com.example.sportlink.domain.util.Result
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.net.SocketTimeoutException
@@ -30,6 +33,7 @@ import javax.inject.Singleton
 class LobbyRepositoryImpl @Inject constructor(
     private val sportApi: SportApi,
     private val lobbyDao: LobbyDao,
+    private val preferencesManager: PreferencesManager,
     @ApplicationContext private val context: Context
 ) : LobbyRepository {
     
@@ -147,16 +151,57 @@ class LobbyRepositoryImpl @Inject constructor(
             if (!isNetworkAvailable()) {
                 return Result.Error(Exception("Nu există conexiune la internet. Verifică conexiunea și încearcă din nou."))
             }
+            
+            val token = preferencesManager.getAuthToken()
+            if (token == null) {
+                return Result.Error(Exception("Nu ești autentificat. Te rugăm să te conectezi din nou."))
+            }
+            
             val request = com.example.sportlink.data.dto.CreateLobbyRequest(
                 sportName = lobby.sportName,
                 location = lobby.location,
+                locationLat = lobby.locationLat,
+                locationLng = lobby.locationLng,
                 date = lobby.date,
                 maxPlayers = lobby.maxPlayers,
                 description = lobby.description
             )
-            val dto = sportApi.createLobby(request)
+            val dto = sportApi.createLobby("Bearer $token", request)
             val createdLobby = dto.toDomainModel()
             Result.Success(createdLobby)
+        } catch (e: Exception) {
+            Result.Error(Exception(getErrorMessage(e)))
+        }
+    }
+    
+    /**
+     * Joins a lobby via API call.
+     * After successful API join, also saves to local Room database.
+     */
+    suspend fun joinLobbyApi(lobbyId: String): Result<Unit> {
+        return try {
+            if (!isNetworkAvailable()) {
+                return Result.Error(Exception("Nu există conexiune la internet. Verifică conexiunea și încearcă din nou."))
+            }
+            
+            val token = preferencesManager.getAuthToken()
+            if (token == null) {
+                return Result.Error(Exception("Nu ești autentificat. Te rugăm să te conectezi din nou."))
+            }
+            
+            val response: MessageResponse = sportApi.joinLobby("Bearer $token", lobbyId)
+            
+            // After successful API join, fetch lobby and save to Room
+            when (val lobbyResult = getLobbyById(lobbyId)) {
+                is Result.Success -> {
+                    joinLobby(lobbyResult.data) // Save to Room
+                }
+                else -> {
+                    // API join succeeded but couldn't fetch lobby - that's okay
+                }
+            }
+            
+            Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(Exception(getErrorMessage(e)))
         }
@@ -193,6 +238,34 @@ class LobbyRepositoryImpl @Inject constructor(
             Result.Success(Unit)
         } catch (e: Exception) {
             Result.Error(e)
+        }
+    }
+    
+    /**
+     * Leaves a lobby via API call.
+     * If user is creator, deletes the entire lobby.
+     * If user is participant, only removes from participants.
+     * After successful API leave, also removes from local Room database.
+     */
+    suspend fun leaveLobbyApi(lobbyId: String): Result<Unit> {
+        return try {
+            if (!isNetworkAvailable()) {
+                return Result.Error(Exception("Nu există conexiune la internet. Verifică conexiunea și încearcă din nou."))
+            }
+            
+            val token = preferencesManager.getAuthToken()
+            if (token == null) {
+                return Result.Error(Exception("Nu ești autentificat. Te rugăm să te conectezi din nou."))
+            }
+            
+            val response: MessageResponse = sportApi.leaveLobby("Bearer $token", lobbyId)
+            
+            // After successful API leave, remove from Room
+            leaveLobby(lobbyId)
+            
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Error(Exception(getErrorMessage(e)))
         }
     }
 }

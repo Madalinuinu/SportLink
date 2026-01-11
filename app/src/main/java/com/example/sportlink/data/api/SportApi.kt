@@ -110,8 +110,36 @@ interface SportApi {
     /**
      * Creates a new lobby.
      * POST /lobbies
+     * Requires authentication (JWT token)
      */
     @POST("lobbies")
-    suspend fun createLobby(@Body request: CreateLobbyRequest): LobbyDto
+    suspend fun createLobby(
+        @Header("Authorization") token: String,
+        @Body request: CreateLobbyRequest
+    ): LobbyDto
+    
+    /**
+     * Join a lobby.
+     * POST /lobbies/{id}/join
+     * Requires authentication (JWT token)
+     */
+    @POST("lobbies/{id}/join")
+    suspend fun joinLobby(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): MessageResponse
+    
+    /**
+     * Leave a lobby.
+     * DELETE /lobbies/{id}/leave
+     * If user is creator, deletes the entire lobby.
+     * If user is participant, only removes from participants.
+     * Requires authentication (JWT token)
+     */
+    @DELETE("lobbies/{id}/leave")
+    suspend fun leaveLobby(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): MessageResponse
 }
 
