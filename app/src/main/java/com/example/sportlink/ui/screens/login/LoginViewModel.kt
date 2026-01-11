@@ -76,12 +76,54 @@ class LoginViewModel @Inject constructor(
     }
     
     /**
-     * Performs login with the given nickname.
+     * Performs login with email and password.
+     * Authenticates with backend and saves profile to DataStore.
+     * 
+     * @param email User's email address
+     * @param password User's password
+     */
+    fun login(email: String, password: String) {
+        if (email.isBlank()) {
+            _uiState.value = LoginUiState.Error("Email-ul nu poate fi gol")
+            return
+        }
+        
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _uiState.value = LoginUiState.Error("Email-ul nu este valid")
+            return
+        }
+        
+        if (password.isBlank()) {
+            _uiState.value = LoginUiState.Error("Parola nu poate fi goală")
+            return
+        }
+        
+        viewModelScope.launch {
+            _uiState.value = LoginUiState.Loading
+            
+            when (val result = userRepository.login(email, password)) {
+                is Result.Success -> {
+                    _uiState.value = LoginUiState.Success(result.data.user.nickname)
+                }
+                is Result.Error -> {
+                    _uiState.value = LoginUiState.Error(
+                        result.exception.message ?: "Autentificarea a eșuat"
+                    )
+                }
+                is Result.Loading -> {
+                    _uiState.value = LoginUiState.Loading
+                }
+            }
+        }
+    }
+    
+    /**
+     * Legacy method: Performs login with nickname (for backward compatibility).
      * Saves nickname to DataStore and navigates to Home on success.
      * 
      * @param nickname The user's nickname
      */
-    fun login(nickname: String) {
+    fun loginWithNickname(nickname: String) {
         if (nickname.isBlank()) {
             _uiState.value = LoginUiState.Error("Nickname cannot be empty")
             return

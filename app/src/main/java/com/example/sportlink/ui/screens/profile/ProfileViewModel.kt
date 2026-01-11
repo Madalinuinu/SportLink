@@ -77,7 +77,12 @@ class ProfileViewModel @Inject constructor(
                 }
                 is Result.Error -> {
                     // Edge case: Set empty profile on error
-                    _userProfile.value = UserProfile(nickname = "", isLoggedIn = false)
+                    _userProfile.value = UserProfile(
+                        userId = "",
+                        email = "",
+                        nickname = "",
+                        isLoggedIn = false
+                    )
                 }
                 is Result.Loading -> {
                     // Keep current state
@@ -115,6 +120,18 @@ class ProfileViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             userRepository.logout()
+        }
+    }
+    
+    /**
+     * Deletes user account from backend.
+     * 
+     * Deletes the account and clears all local data.
+     * Should be called before navigating to login screen.
+     */
+    fun deleteAccount() {
+        viewModelScope.launch {
+            userRepository.deleteAccount()
         }
     }
 }

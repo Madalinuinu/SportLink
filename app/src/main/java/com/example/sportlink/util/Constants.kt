@@ -8,12 +8,16 @@ package com.example.sportlink.util
  */
 object Constants {
     /**
-     * MockAPI Base URL for REST API endpoints.
+     * Base URL for REST API endpoints.
      * 
-     * This is the base URL for all API calls to MockAPI.io.
-     * All endpoints are relative to this base URL.
+     * For development: Use localhost backend (http://10.0.2.2:3000/api/ pentru emulator)
+     * For production: Use your deployed backend URL
+     * 
+     * IMPORTANT: Pentru emulator Android, folosește 10.0.2.2 în loc de localhost!
+     * Pentru device fizic, folosește IP-ul PC-ului tău (ex: http://192.168.1.100:3000/api/)
      */
-    const val BASE_URL = "https://6963a0832d146d9f58d3ef80.mockapi.io/"
+    const val BASE_URL = "http://10.0.2.2:3000/api/" // Pentru emulator Android
+    // const val BASE_URL = "http://192.168.1.100:3000/api/" // Pentru device fizic (schimbă cu IP-ul tău)
     
     /**
      * Room Database name.

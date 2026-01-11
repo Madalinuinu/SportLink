@@ -3,8 +3,13 @@ package com.example.sportlink.ui.screens.login
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -37,9 +42,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
-    var nickname by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -74,28 +82,48 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Welcome to SportLink",
+                    text = "Bun venit la SportLink",
                     style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
                 
                 OutlinedTextField(
-                    value = nickname,
-                    onValueChange = { nickname = it },
-                    label = { Text("Enter your nickname") },
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(bottom = 16.dp),
                     enabled = uiState !is LoginUiState.Loading,
                     singleLine = true
                 )
                 
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Parolă") },
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(bottom = 16.dp),
+                    enabled = uiState !is LoginUiState.Loading,
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                )
+                
                 Button(
-                    onClick = { viewModel.login(nickname) },
-                    enabled = uiState !is LoginUiState.Loading && nickname.isNotBlank()
+                    onClick = { viewModel.login(email, password) },
+                    enabled = uiState !is LoginUiState.Loading &&
+                            email.isNotBlank() &&
+                            password.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .padding(bottom = 8.dp)
                 ) {
                     if (uiState is LoginUiState.Loading) {
                         CircularProgressIndicator(
@@ -103,7 +131,21 @@ fun LoginScreen(
                             color = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary
                         )
                     }
-                    Text("Login")
+                    Text("Conectează-te")
+                }
+                
+                androidx.compose.material3.TextButton(
+                    onClick = onNavigateToForgotPassword,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text("Ai uitat parola?")
+                }
+                
+                androidx.compose.material3.TextButton(
+                    onClick = onNavigateToRegister,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text("Nu ai cont? Înregistrează-te")
                 }
             }
         }
