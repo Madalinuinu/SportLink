@@ -81,17 +81,31 @@ class DetailsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = DetailsUiState.Loading
             
-            // Check if lobby is already joined (from Room database)
-            val isJoined = checkIfJoined(id)
-            
             when (val result = lobbyRepository.getLobbyById(id)) {
                 is Result.Success -> {
                     currentLobby = result.data
-                    // Check if current user is creator by comparing emails
+                    
+                    // Get current user info
                     val currentUserEmail = preferencesManager.email.first()
+                    val currentUserId = preferencesManager.getUserId()
+                    
+                    // Check if current user is creator by comparing emails
                     val isCreator = currentUserEmail != null && 
                                    result.data.creatorEmail != null &&
                                    currentUserEmail == result.data.creatorEmail
+                    
+                    // Check if user is joined by checking participants list from API (source of truth)
+                    // This is more reliable than checking Room database
+                    val isJoined = if (currentUserId != null || currentUserEmail != null) {
+                        result.data.participants.any { participant ->
+                            (currentUserId != null && participant.userId == currentUserId) ||
+                            (currentUserEmail != null && participant.email == currentUserEmail)
+                        }
+                    } else {
+                        // Fallback: check Room database if user info not available
+                        checkIfJoined(id)
+                    }
+                    
                     _uiState.value = DetailsUiState.Success(result.data, isJoined, isCreator)
                 }
                 is Result.Error -> {
@@ -107,7 +121,8 @@ class DetailsViewModel @Inject constructor(
     }
     
     /**
-     * Checks if lobby is already joined by querying Room.
+     * Checks if lobby is already joined by querying Room (fallback method).
+     * Primary method should check participants list from API.
      */
     private suspend fun checkIfJoined(lobbyId: String): Boolean {
         return try {
@@ -126,7 +141,7 @@ class DetailsViewModel @Inject constructor(
      * Updates UI state to reflect joined status and reloads lobby details to get updated participants.
      * 
      * Handles edge cases:
-     * - Duplicate join attempts (handled by API)
+     * - Duplicate join attempts (handled by API) - if "Already joined", reload lobby to sync state
      * - Network errors
      * - Database write failures
      * 
@@ -159,9 +174,18 @@ class DetailsViewModel @Inject constructor(
                         }
                     }
                     is Result.Error -> {
-                        _uiState.value = DetailsUiState.Error(
-                            apiResult.exception.message ?: "Nu s-a putut alătura la lobby. Te rugăm să încerci din nou."
-                        )
+                        // Check if error is "Already joined" - this means user is already in lobby
+                        val errorMessage = apiResult.exception.message ?: ""
+                        if (errorMessage.contains("Already joined", ignoreCase = true) || 
+                            errorMessage.contains("already", ignoreCase = true)) {
+                            // User is already joined - sync state by reloading lobby details
+                            // This handles the case where local state is out of sync with backend
+                            loadLobbyDetails(lobby.id)
+                        } else {
+                            _uiState.value = DetailsUiState.Error(
+                                errorMessage.ifBlank { "Nu s-a putut alătura la lobby. Te rugăm să încerci din nou." }
+                            )
+                        }
                     }
                     else -> {}
                 }
@@ -192,7 +216,8 @@ class DetailsViewModel @Inject constructor(
      * Handles edge cases:
      * - Lobby not found
      * - Network errors
-     * - User not a participant
+     * - User not a participant (already left)
+     * - State synchronization issues
      * 
      * @param lobbyId The ID of the lobby to leave
      */
@@ -208,15 +233,36 @@ class DetailsViewModel @Inject constructor(
             if (repositoryImpl != null) {
                 when (val apiResult = repositoryImpl.leaveLobbyApi(lobbyId)) {
                     is Result.Success -> {
-                        // If creator left, lobby was deleted - API handles it
-                        // If participant left, just update UI
-                        // Reload lobby details to get updated state
+                        // Successfully left - immediately update UI state to show "not joined"
+                        // Then reload lobby details to get updated participants list
+                        currentLobby?.let { lobby ->
+                            val currentUserEmail = preferencesManager.email.first()
+                            val isCreator = currentUserEmail != null && 
+                                           lobby.creatorEmail != null &&
+                                           currentUserEmail == lobby.creatorEmail
+                            // Update state immediately to show button as "Alătură-te"
+                            _uiState.value = DetailsUiState.Success(lobby, isJoined = false, isCreator)
+                        }
+                        // Small delay to ensure backend has processed the leave
+                        kotlinx.coroutines.delay(300)
+                        // Reload to get updated participants list
                         loadLobbyDetails(lobbyId)
                     }
                     is Result.Error -> {
-                        _uiState.value = DetailsUiState.Error(
-                            apiResult.exception.message ?: "Nu s-a putut părăsi lobby-ul. Te rugăm să încerci din nou."
-                        )
+                        val errorMessage = apiResult.exception.message ?: ""
+                        // Check if user was already not a participant (already left)
+                        // In this case, just sync state by reloading
+                        if (errorMessage.contains("not a participant", ignoreCase = true) ||
+                            errorMessage.contains("not found", ignoreCase = true)) {
+                            // User already left or lobby doesn't exist - sync state
+                            // Remove from Room if still there and reload
+                            lobbyRepository.leaveLobby(lobbyId) // Remove from Room
+                            loadLobbyDetails(lobbyId)
+                        } else {
+                            _uiState.value = DetailsUiState.Error(
+                                errorMessage.ifBlank { "Nu s-a putut părăsi lobby-ul. Te rugăm să încerci din nou." }
+                            )
+                        }
                     }
                     else -> {}
                 }

@@ -179,8 +179,15 @@ fun NavGraph(
         composable(route = Screen.Profile.route) {
             ProfileScreen(
                 onNavigateToLogin = {
+                    // Clear entire back stack and navigate to Login
+                    // Navigate to Login and clear all previous screens from back stack
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
+                        // Pop all screens up to the start destination (Login)
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        // Prevent adding Login to back stack if user presses back
+                        launchSingleTop = true
+                        // Clear back stack completely
+                        restoreState = false
                     }
                 },
                 onNavigateBack = {

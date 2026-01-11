@@ -1,0 +1,22 @@
+Fix logout navigation, lobby state sync, and UI improvements
+
+Android:
+- Fixed logout navigation issue - now properly clears back stack and navigates to login
+- Fixed leave lobby functionality - button updates immediately and state syncs correctly
+- Fixed scroll issue in DetailsScreen - removed fillMaxSize() to allow proper scrolling
+- Removed leave lobby button from ProfileScreen - replaced with active status indicator
+- Added green 'Activ' status badge for future lobbies in ProfileScreen
+- Fixed participant list refresh - lobby details now reload when screen is accessed
+- Added cache control headers to prevent stale data in API requests
+- Updated color palette to blue-violet theme (3C467B, 50589C, 636CCB, 6E8CFB)
+- Improved DetailsViewModel to check participants list from API (source of truth)
+- Added isLobbyDateInFuture utility function for status checking
+- Enhanced DetailsScreen to reload lobby details on screen access
+
+Bug Fixes:
+- Logout now properly clears user session and navigates correctly
+- Leave lobby now immediately updates UI state before reloading
+- Participant count now updates correctly when users leave lobby
+- Scroll works properly even with many participants
+- ProfileScreen no longer allows leaving lobbies, only shows active status
+

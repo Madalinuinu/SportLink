@@ -1,50 +1,29 @@
 package com.example.sportlink.ui.screens.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SportsSoccer
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.sportlink.ui.components.LobbyItem
 import com.example.sportlink.ui.components.LobbyItemSkeleton
+import com.example.sportlink.ui.components.ModernEmptyState
+import com.example.sportlink.ui.components.ModernErrorState
+import com.example.sportlink.ui.components.ModernLoadingState
 
 /**
  * Home Screen composable.
@@ -68,8 +47,6 @@ fun HomeScreen(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedSportFilter by viewModel.selectedSportFilter.collectAsStateWithLifecycle()
     
-    var searchText by remember { mutableStateOf("") }
-    
     // Use derivedStateOf for computed state to avoid unnecessary recompositions (Optimizare Compose)
     val isRefreshing by remember {
         derivedStateOf { uiState is HomeUiState.Loading }
@@ -87,36 +64,65 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SportLink") },
+                title = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.SportsSoccer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = "SportLink",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
                 actions = {
                     IconButton(
-                        onClick = {
-                            viewModel.refresh()
-                        },
-                        enabled = !isRefreshing,
-                        modifier = Modifier.semantics { contentDescription = "Refresh lobby list" }
+                        onClick = { viewModel.refresh() },
+                        enabled = !isRefreshing
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
-                    IconButton(
-                        onClick = {
-                            onNavigateToProfile()
-                        },
-                        modifier = Modifier.semantics { contentDescription = "Open profile" }
-                    ) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
+                    IconButton(onClick = { onNavigateToProfile() }) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    onNavigateToCreate()
-                },
-                modifier = Modifier.semantics { contentDescription = "Create new lobby" }
+                onClick = { onNavigateToCreate() },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Create Lobby")
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Create Lobby",
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     ) { paddingValues ->
@@ -127,153 +133,161 @@ fun HomeScreen(
         ) {
             when (val state = uiState) {
                 is HomeUiState.Loading -> {
-                    // Loading skeletons instead of simple CircularProgressIndicator (5p Gestionarea Stărilor UI)
                     if (filteredLobbies.isEmpty()) {
-                        LazyColumn(
+                        ModernLoadingState(
+                            message = "Se încarcă lobby-urile...",
                             modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(5) {
-                                LobbyItemSkeleton()
-                            }
-                        }
+                        )
                     }
                 }
                 is HomeUiState.Success -> {
                     Column(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
-                            // Search bar
-                            OutlinedTextField(
-                                value = searchText,
-                                onValueChange = {
-                                    searchText = it
-                                    viewModel.updateSearchQuery(it)
-                                },
-                                label = { Text("Search lobbies...") },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                singleLine = true
-                            )
-                            
-                            // Sport filter chips
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                val sports = listOf(null, "Fotbal", "Tenis", "Baschet")
-                                items(sports.size) { index ->
-                                    val sport = sports[index]
-                                    FilterChip(
-                                        selected = selectedSportFilter == sport,
-                                        onClick = { viewModel.updateSportFilter(sport) },
-                                        label = { Text(sport ?: "Toate") }
+                        // Modern search bar with gradient background
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
+                                            Color.Transparent
+                                        )
                                     )
-                                }
-                            }
-                            
-                            // Results count (5p UX)
-                            if (filteredLobbies.isNotEmpty()) {
-                                Text(
-                                    text = "${filteredLobbies.size} lobby-uri găsite",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
-                            }
-                            
-                            // Lobby list
-                            if (filteredLobbies.isEmpty()) {
-                                // Improved empty state with icon and action (5p Design și Layout, 5p UX)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.SportsSoccer,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(64.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                        Text(
-                                            text = if (state.lobbies.isEmpty()) {
-                                                "Nu există lobby-uri disponibile"
-                                            } else {
-                                                "Nu s-au găsit lobby-uri care să corespundă criteriilor"
-                                            },
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        if (isEmptyState) {
-                                            Button(
-                                                onClick = {
-                                                    onNavigateToCreate()
-                                                }
-                                            ) {
-                                                Text("Creează primul lobby!")
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Animated list items with key() for optimization (Optimizare Compose)
-                                LazyColumn(
-                                    modifier = Modifier.fillMaxSize()
-                                ) {
-                                    items(
-                                        items = filteredLobbies,
-                                        key = { it.id } // Use key() to avoid unnecessary recompositions
-                                    ) { lobby ->
-                                        AnimatedVisibility(
-                                            visible = true,
-                                            enter = fadeIn(),
-                                            exit = fadeOut()
-                                        ) {
-                                            LobbyItem(
-                                                lobby = lobby,
-                                                onClick = {
-                                                    onNavigateToDetails(lobby.id)
-                                                }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.updateSearchQuery(it) },
+                                label = { Text("Caută lobby-uri...") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { 
+                                            viewModel.updateSearchQuery("")
+                                        }) {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription = "Clear",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+                        }
+                            
+                        // Modern sport filter chips
+                        val sports = remember { listOf(null, "Fotbal", "Tenis", "Baschet") }
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            items(sports.size) { index ->
+                                val sport = sports[index]
+                                val isSelected = selectedSportFilter == sport
+                                
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { viewModel.updateSportFilter(sport) },
+                                    enabled = true,
+                                    label = { 
+                                        Text(
+                                            text = sport ?: "Toate",
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        ) 
+                                    },
+                                    modifier = Modifier,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                )
+                            }
+                        }
+                            
+                        // Results count with modern badge
+                        if (filteredLobbies.isNotEmpty()) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "${filteredLobbies.size} lobby-uri găsite",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                        
+                        // Lobby list
+                        if (filteredLobbies.isEmpty()) {
+                            ModernEmptyState(
+                                icon = Icons.Default.SportsSoccer,
+                                title = if (state.lobbies.isEmpty()) {
+                                    "Nu există lobby-uri"
+                                } else {
+                                    "Nu s-au găsit rezultate"
+                                },
+                                message = if (state.lobbies.isEmpty()) {
+                                    "Fii primul care creează un lobby și găsește parteneri de joc!"
+                                } else {
+                                    "Încearcă să modifici filtrele sau termenii de căutare"
+                                },
+                                actionText = if (isEmptyState) "Creează primul lobby!" else null,
+                                onAction = if (isEmptyState) { { onNavigateToCreate() } } else null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            // Animated list items with key() for optimization (Optimizare Compose)
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    items = filteredLobbies,
+                                    key = { it.id } // Optimized: key() prevents unnecessary recompositions
+                                ) { lobby ->
+                                    // Optimized: Removed AnimatedVisibility wrapper for better performance
+                                    LobbyItem(
+                                        lobby = lobby,
+                                        onClick = {
+                                            onNavigateToDetails(lobby.id)
+                                        }
+                                    )
                                 }
                             }
                         }
+                    }
                 }
                 is HomeUiState.Error -> {
-                    // Improved error state with Retry button (5p Gestionarea Stărilor UI, 5p Stabilitate)
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = state.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Button(
-                            onClick = {
-                                viewModel.loadLobbies()
-                            },
-                            modifier = Modifier.semantics { contentDescription = "Retry loading lobbies" }
-                        ) {
-                            Text("Retry")
-                        }
-                    }
+                    ModernErrorState(
+                        message = state.message,
+                        onRetry = { viewModel.loadLobbies() },
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }

@@ -143,16 +143,21 @@ fun CreateLobbyScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                val sports = listOf("Fotbal", "Tenis", "Baschet", "Volei", "Handbal", "Badminton")
+                val sports = listOf("Fotbal", "Tenis", "Baschet")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     sports.forEach { sport ->
                         FilterChip(
                             selected = viewModel.sportName == sport,
                             onClick = { viewModel.updateSportName(sport) },
-                            label = { Text(sport) },
+                            label = { 
+                                Text(
+                                    text = sport,
+                                    style = MaterialTheme.typography.bodyLarge
+                                ) 
+                            },
                             enabled = uiState !is CreateLobbyUiState.Loading,
                             modifier = Modifier.weight(1f)
                         )
@@ -161,7 +166,7 @@ fun CreateLobbyScreen(
             }
             
             // Location Selection
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = "Locație",
                     style = MaterialTheme.typography.titleMedium,
@@ -179,17 +184,23 @@ fun CreateLobbyScreen(
                 
                 var expanded by remember { mutableStateOf(false) }
                 
-                if (availableLocations.isEmpty()) {
+                    if (availableLocations.isEmpty()) {
                     // Show message if no sport selected
                     OutlinedTextField(
                         value = "",
                         onValueChange = {},
-                        label = { Text("Selectează mai întâi un sport") },
+                        label = { 
+                            Text(
+                                text = "Selectează mai întâi un sport",
+                                style = MaterialTheme.typography.bodyMedium
+                            ) 
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = false,
                         leadingIcon = {
                             Icon(Icons.Default.LocationOn, contentDescription = null)
-                        }
+                        },
+                        textStyle = MaterialTheme.typography.bodyLarge
                     )
                 } else {
                     // Dropdown for location selection
@@ -202,8 +213,18 @@ fun CreateLobbyScreen(
                             value = viewModel.location,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Selectează locația") },
-                            placeholder = { Text("Alege o locație...") },
+                            label = { 
+                                Text(
+                                    text = "Selectează locația",
+                                    style = MaterialTheme.typography.bodyMedium
+                                ) 
+                            },
+                            placeholder = { 
+                                Text(
+                                    text = "Alege o locație...",
+                                    style = MaterialTheme.typography.bodyMedium
+                                ) 
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(),
@@ -217,7 +238,8 @@ fun CreateLobbyScreen(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                            )
+                            ),
+                            textStyle = MaterialTheme.typography.bodyLarge
                         )
                         ExposedDropdownMenu(
                             expanded = expanded,
@@ -280,7 +302,10 @@ fun CreateLobbyScreen(
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 8.dp)
                             )
-                            Text("Vezi pe hartă")
+                            Text(
+                                text = "Vezi pe hartă",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
                         }
                     }
                 }
@@ -294,7 +319,7 @@ fun CreateLobbyScreen(
                 // Date Picker
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "Data",
@@ -311,14 +336,17 @@ fun CreateLobbyScreen(
                             contentDescription = null,
                             modifier = Modifier.padding(end = 8.dp)
                         )
-                        Text(selectedDateText)
+                        Text(
+                            text = selectedDateText,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
                 
                 // Time Picker
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "Ora",
@@ -335,7 +363,10 @@ fun CreateLobbyScreen(
                             contentDescription = null,
                             modifier = Modifier.padding(end = 8.dp)
                         )
-                        Text(selectedTimeText)
+                        Text(
+                            text = selectedTimeText,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
             }
@@ -377,7 +408,7 @@ fun CreateLobbyScreen(
             }
             
             // Description
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = "Descriere (opțional)",
                     style = MaterialTheme.typography.titleMedium,
@@ -386,12 +417,23 @@ fun CreateLobbyScreen(
                 OutlinedTextField(
                     value = viewModel.description,
                     onValueChange = { viewModel.updateDescription(it) },
-                    label = { Text("Adaugă detalii despre meci") },
-                    placeholder = { Text("ex: Meci amical, nivel intermediar...") },
+                    label = { 
+                        Text(
+                            text = "Adaugă detalii despre meci",
+                            style = MaterialTheme.typography.bodyMedium
+                        ) 
+                    },
+                    placeholder = { 
+                        Text(
+                            text = "ex: Meci amical, nivel intermediar...",
+                            style = MaterialTheme.typography.bodyMedium
+                        ) 
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = uiState !is CreateLobbyUiState.Loading,
                     minLines = 3,
-                    maxLines = 5
+                    maxLines = 5,
+                    textStyle = MaterialTheme.typography.bodyLarge
                 )
             }
             

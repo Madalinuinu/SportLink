@@ -30,11 +30,24 @@ object NetworkModule {
             level = HttpLoggingInterceptor.Level.BODY
         }
         
+        // Interceptor to disable cache for lobby requests to ensure fresh data
+        val cacheControlInterceptor = okhttp3.Interceptor { chain ->
+            val request = chain.request()
+            val newRequest = request.newBuilder()
+                // Add cache control headers to prevent stale data
+                .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .build()
+            chain.proceed(newRequest)
+        }
+        
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(cacheControlInterceptor)
+            .connectTimeout(15, TimeUnit.SECONDS)  // Optimized: reduced from 30s for faster error detection
+            .readTimeout(15, TimeUnit.SECONDS)     // Optimized: reduced from 30s for faster response
+            .writeTimeout(15, TimeUnit.SECONDS)    // Optimized: reduced from 30s for faster uploads
             .build()
     }
     

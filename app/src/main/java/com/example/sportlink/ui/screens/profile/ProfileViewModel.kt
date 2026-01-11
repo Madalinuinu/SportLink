@@ -91,36 +91,19 @@ class ProfileViewModel @Inject constructor(
         }
     }
     
-    /**
-     * Leaves a lobby (removes from Room database).
-     * 
-     * Removes the lobby from local storage.
-     * The UI will automatically update via Flow observation.
-     * 
-     * @param lobbyId The ID of the lobby to leave
-     */
-    fun leaveLobby(lobbyId: String) {
-        // Edge case: Validate ID before deletion
-        if (lobbyId.isBlank()) {
-            return
-        }
-        
-        viewModelScope.launch {
-            lobbyRepository.leaveLobby(lobbyId)
-            // UI updates automatically via Flow observation
-        }
-    }
     
     /**
      * Logs out the user (clears DataStore).
      * 
      * Clears all user preferences including nickname and login status.
+     * Returns a Flow to track logout completion.
      * Should be called before navigating to login screen.
      */
-    fun logout() {
-        viewModelScope.launch {
-            userRepository.logout()
-        }
+    suspend fun logout() {
+        userRepository.logout()
+        // Reset ViewModel state after logout
+        _userProfile.value = null
+        _joinedLobbies.value = emptyList()
     }
     
     /**

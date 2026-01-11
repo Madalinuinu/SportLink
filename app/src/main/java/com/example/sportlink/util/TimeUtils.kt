@@ -83,3 +83,30 @@ fun formatDateTime(dateTime: String?): String {
     }
 }
 
+/**
+ * Checks if a lobby date is in the future (lobby is active).
+ * 
+ * @param dateTime ISO 8601 timestamp string
+ * @return true if lobby date is in the future, false otherwise
+ */
+fun isLobbyDateInFuture(dateTime: String?): Boolean {
+    if (dateTime == null || dateTime.isBlank()) {
+        return false
+    }
+    
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val lobbyDate = sdf.parse(dateTime)
+        if (lobbyDate == null) {
+            false
+        } else {
+            val now = Date()
+            lobbyDate.after(now) // Returns true if lobby date is after current time
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
+

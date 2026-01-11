@@ -100,10 +100,11 @@ class HomeViewModel @Inject constructor(
             _uiState.value = HomeUiState.Loading
             
             // Use exponential backoff retry for better error handling (5p Stabilitate)
+            // Optimized: reduced delays for faster error recovery while maintaining retry logic
             val retryResult = RetryHelper.retryWithExponentialBackoff(
                 maxRetries = 3,
-                initialDelayMs = 1000,
-                maxDelayMs = 5000
+                initialDelayMs = 500,   // Optimized: faster initial retry
+                maxDelayMs = 2000       // Optimized: faster max delay
             ) {
                 lobbyRepository.getAllLobbies()
             }

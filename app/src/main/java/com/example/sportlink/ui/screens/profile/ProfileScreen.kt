@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.sportlink.util.isLobbyDateInFuture
 
 /**
  * Profile Screen composable with modern design.
@@ -284,19 +286,36 @@ fun ProfileScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
-                                Text(
-                                    text = lobby.date,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                                OutlinedButton(
-                                    onClick = { viewModel.leaveLobby(lobby.id) },
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.error
-                                    )
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Leave Lobby")
+                                    Text(
+                                        text = com.example.sportlink.util.formatDateTime(lobby.date),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    // Status indicator - only show if lobby is in the future
+                                    if (isLobbyDateInFuture(lobby.date)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFF4CAF50)) // Green color
+                                            )
+                                            Text(
+                                                text = "Activ",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color(0xFF4CAF50),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -314,17 +333,37 @@ fun ProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Logout Button
+                var isLoggingOut by remember { mutableStateOf(false) }
+                
                 OutlinedButton(
                     onClick = {
-                        viewModel.logout()
-                        onNavigateToLogin()
+                        isLoggingOut = true
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoggingOut,
                     colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("LOGOUT", fontWeight = FontWeight.Bold)
+                    if (isLoggingOut) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text("LOGOUT", fontWeight = FontWeight.Bold)
+                    }
+                }
+                
+                // Handle logout completion
+                LaunchedEffect(isLoggingOut) {
+                    if (isLoggingOut) {
+                        viewModel.logout()
+                        // Small delay to ensure DataStore is cleared
+                        kotlinx.coroutines.delay(100)
+                        onNavigateToLogin()
+                    }
                 }
                 
                 // Delete Account Button
@@ -382,3 +421,4 @@ fun ProfileScreen(
         )
     }
 }
+
