@@ -13,11 +13,29 @@ import javax.inject.Inject
 
 /**
  * Sealed class representing UI states for Login Screen.
+ * 
+ * Used for state management in MVVM pattern (10p Model Arhitectural).
+ * Provides type-safe state representation for login flow.
  */
 sealed class LoginUiState {
+    /** Initial state when screen is first loaded */
     object Idle : LoginUiState()
+    
+    /** State when login is in progress (saving to DataStore) */
     object Loading : LoginUiState()
+    
+    /**
+     * State when login is successful.
+     * 
+     * @param nickname The user's nickname that was saved
+     */
     data class Success(val nickname: String) : LoginUiState()
+    
+    /**
+     * State when an error occurs during login.
+     * 
+     * @param message User-friendly error message (5p Stabilitate)
+     */
     data class Error(val message: String) : LoginUiState()
 }
 

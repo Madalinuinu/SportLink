@@ -17,11 +17,29 @@ import javax.inject.Inject
 
 /**
  * Sealed class representing UI states for Create Lobby Screen.
+ * 
+ * Used for state management in MVVM pattern (10p Model Arhitectural).
+ * Provides type-safe state representation for form states and API operations.
  */
 sealed class CreateLobbyUiState {
+    /** Initial state when screen is first loaded */
     object Idle : CreateLobbyUiState()
+    
+    /** State when creating lobby (POST request in progress) */
     object Loading : CreateLobbyUiState()
+    
+    /**
+     * State when lobby is successfully created.
+     * 
+     * @param lobby The created lobby returned from API
+     */
     data class Success(val lobby: Lobby) : CreateLobbyUiState()
+    
+    /**
+     * State when an error occurs during lobby creation.
+     * 
+     * @param message User-friendly error message (5p Stabilitate)
+     */
     data class Error(val message: String) : CreateLobbyUiState()
 }
 
@@ -87,16 +105,32 @@ class CreateLobbyViewModel @Inject constructor(
     }
     
     /**
-     * Validates form input.
+     * Validates form input before submission.
+     * 
+     * Validates all required fields and ensures data integrity:
+     * - Sport name must not be blank
+     * - Location must not be blank
+     * - Date must not be blank
+     * - Max players must be a positive integer
+     * 
+     * @return Error message if validation fails, null if validation passes
      */
     private fun validateForm(): String? {
-        if (sportName.isBlank()) return "Sport name is required"
-        if (location.isBlank()) return "Location is required"
-        if (date.isBlank()) return "Date is required"
+        if (sportName.isBlank()) return "Numele sportului este obligatoriu"
+        if (location.isBlank()) return "Locația este obligatorie"
+        if (date.isBlank()) return "Data este obligatorie"
+        
+        // Edge case: Validate maxPlayers is a valid positive number
         val maxPlayersInt = maxPlayers.toIntOrNull()
         if (maxPlayersInt == null || maxPlayersInt <= 0) {
-            return "Max players must be a positive number"
+            return "Numărul maxim de jucători trebuie să fie un număr pozitiv"
         }
+        
+        // Edge case: Reasonable limit for max players
+        if (maxPlayersInt > 100) {
+            return "Numărul maxim de jucători nu poate depăși 100"
+        }
+        
         return null
     }
     

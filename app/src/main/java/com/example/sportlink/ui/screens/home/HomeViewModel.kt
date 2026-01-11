@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.sportlink.util.RetryHelper
 import javax.inject.Inject
 
 /**
@@ -90,20 +91,33 @@ class HomeViewModel @Inject constructor(
     }
     
     /**
-     * Loads all lobbies from the repository.
+     * Loads all lobbies from the repository with exponential backoff retry.
      * Uses viewModelScope.launch for async operations (10p Management Asincron).
+     * Implements retry mechanism with exponential backoff for better stability (5p Stabilitate).
      */
     fun loadLobbies() {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
             
-            when (val result = lobbyRepository.getAllLobbies()) {
+            // Use exponential backoff retry for better error handling (5p Stabilitate)
+            val retryResult = RetryHelper.retryWithExponentialBackoff(
+                maxRetries = 3,
+                initialDelayMs = 1000,
+                maxDelayMs = 5000
+            ) {
+                lobbyRepository.getAllLobbies()
+            }
+            
+            when (retryResult) {
                 is Result.Success -> {
-                    _uiState.value = HomeUiState.Success(result.data)
+                    // Handle edge case: empty list from API
+                    _uiState.value = HomeUiState.Success(
+                        retryResult.data.ifEmpty { emptyList() }
+                    )
                 }
                 is Result.Error -> {
                     _uiState.value = HomeUiState.Error(
-                        result.exception.message ?: "Failed to load lobbies"
+                        retryResult.exception.message ?: "Failed to load lobbies after retries"
                     )
                 }
                 is Result.Loading -> {
