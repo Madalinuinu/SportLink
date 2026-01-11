@@ -10,10 +10,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Login Screen composable.
@@ -37,16 +40,32 @@ fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     var nickname by remember { mutableStateOf("") }
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Check if user is already logged in (persistence check)
+    LaunchedEffect(Unit) {
+        viewModel.checkIfLoggedIn()
+    }
     
     // Navigate to Home when login is successful
     LaunchedEffect(uiState) {
-        if (uiState is LoginUiState.Success) {
-            onLoginSuccess()
+        when (uiState) {
+            is LoginUiState.Success -> {
+                onLoginSuccess()
+            }
+            is LoginUiState.Error -> {
+                snackbarHostState.showSnackbar((uiState as LoginUiState.Error).message)
+            }
+            else -> {}
         }
     }
     
-    Scaffold { paddingValues ->
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -73,14 +92,6 @@ fun LoginScreen(
                     enabled = uiState !is LoginUiState.Loading,
                     singleLine = true
                 )
-                
-                if (uiState is LoginUiState.Error) {
-                    Text(
-                        text = (uiState as LoginUiState.Error).message,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
                 
                 Button(
                     onClick = { viewModel.login(nickname) },

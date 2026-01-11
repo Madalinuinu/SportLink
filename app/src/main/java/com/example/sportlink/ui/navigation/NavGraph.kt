@@ -7,8 +7,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.sportlink.ui.screens.create.CreateLobbyScreen
+import com.example.sportlink.ui.screens.details.DetailsScreen
 import com.example.sportlink.ui.screens.home.HomeScreen
 import com.example.sportlink.ui.screens.login.LoginScreen
+import com.example.sportlink.ui.screens.profile.ProfileScreen
 
 /**
  * Navigation graph for SportLink application.
@@ -63,23 +66,33 @@ fun NavGraph(
             )
         ) { backStackEntry ->
             val lobbyId = backStackEntry.arguments?.getString("lobbyId") ?: ""
-            // DetailsScreen will be implemented in ETAPA 4
-            // For now, just navigate back
-            navController.popBackStack()
+            DetailsScreen(
+                lobbyId = lobbyId,
+                navController = navController
+            )
         }
         
         // Create Lobby Screen
         composable(route = Screen.CreateLobby.route) {
-            // CreateLobbyScreen will be implemented in ETAPA 4
-            // For now, just navigate back
-            navController.popBackStack()
+            CreateLobbyScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
         
         // Profile Screen
         composable(route = Screen.Profile.route) {
-            // ProfileScreen will be implemented in ETAPA 4
-            // For now, just navigate back
-            navController.popBackStack()
+            ProfileScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

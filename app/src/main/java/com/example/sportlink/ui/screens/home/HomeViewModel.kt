@@ -9,6 +9,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,6 +42,47 @@ class HomeViewModel @Inject constructor(
     
     // Public immutable state flow
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    
+    // Search and filter state (Bonus - 5p Complexitate)
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    
+    private val _selectedSportFilter = MutableStateFlow<String?>(null)
+    val selectedSportFilter: StateFlow<String?> = _selectedSportFilter.asStateFlow()
+    
+    // Filtered lobbies combining search and filter (10p Model Arhitectural - filtering in ViewModel)
+    val filteredLobbies: StateFlow<List<Lobby>> = combine(
+        _uiState,
+        _searchQuery.debounce(300), // Debounce search input (5p UX)
+        _selectedSportFilter
+    ) { state, query, sportFilter ->
+        when (state) {
+            is HomeUiState.Success -> {
+                var filtered = state.lobbies
+                
+                // Apply search filter
+                if (query.isNotBlank()) {
+                    filtered = filtered.filter { lobby ->
+                        lobby.sportName.contains(query, ignoreCase = true) ||
+                        lobby.location.contains(query, ignoreCase = true) ||
+                        (lobby.description?.contains(query, ignoreCase = true) == true)
+                    }
+                }
+                
+                // Apply sport filter
+                if (sportFilter != null) {
+                    filtered = filtered.filter { it.sportName == sportFilter }
+                }
+                
+                filtered
+            }
+            else -> emptyList()
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
     
     init {
         // Load lobbies when ViewModel is created
@@ -73,6 +118,20 @@ class HomeViewModel @Inject constructor(
      */
     fun refresh() {
         loadLobbies()
+    }
+    
+    /**
+     * Updates the search query.
+     */
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+    
+    /**
+     * Updates the selected sport filter.
+     */
+    fun updateSportFilter(sport: String?) {
+        _selectedSportFilter.value = sport
     }
 }
 

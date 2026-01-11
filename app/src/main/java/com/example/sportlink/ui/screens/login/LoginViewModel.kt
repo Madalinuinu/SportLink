@@ -39,6 +39,25 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
     
     /**
+     * Checks if user is already logged in (persistence check).
+     * If logged in, sets state to Success to trigger navigation.
+     */
+    fun checkIfLoggedIn() {
+        viewModelScope.launch {
+            when (val result = userRepository.getProfile()) {
+                is Result.Success -> {
+                    if (result.data.isLoggedIn && result.data.nickname.isNotBlank()) {
+                        _uiState.value = LoginUiState.Success(result.data.nickname)
+                    }
+                }
+                else -> {
+                    // User not logged in, stay on login screen
+                }
+            }
+        }
+    }
+    
+    /**
      * Performs login with the given nickname.
      * Saves nickname to DataStore and navigates to Home on success.
      * 
